@@ -18,11 +18,15 @@ This project allows users to view a 3D model and interactively apply makeup to d
 ```bash
 git clone https://github.com/LowUp/Hackathon-3D-human.git
 ```
-2. Install dependencies
+2. Navigate to project folder
 ```bash
-cd npm install
+cd Hackathon-3D-human
 ```
-3. Run project
+3. Install dependencies
+```bash
+npm install
+```
+4. Run project
 ```bash
 npm run dev
 ```
