@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music-Driven Particle System with Bouncing Ball</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #fileInput {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <input type="file" id="fileInput" accept="audio/*">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Scene, Camera, Renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Particle System
+    const particleCount = 1000;
+    const particles = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 20;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+      sizes[i] = 1;
+    }
+
+    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const particleMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        pointTexture: { value: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/disc.png') },
+      },
+      vertexShader: `
+        attribute float size;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D pointTexture;
+        varying vec3 vColor;
+        void main() {
+          gl_FragColor = vec4(vColor, 1.0);
+          gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      depthTest: false,
+      transparent: true,
+      vertexColors: true
+    });
+    const particleSystem = new THREE.Points(particles, particleMaterial);
+    scene.add(particleSystem);
+
+    // Bouncing Ball
+    const ballGeometry = new THREE.SphereGeometry(1, 32, 32);
+    const ballMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    ball.position.y = 5;
+    scene.add(ball);
+
+    camera.position.z = 30;
+
+    // Audio Setup
+    const fileInput = document.getElementById('fileInput');
+    let audioContext, audioAnalyser, dataArray;
+
+    fileInput.addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const arrayBuffer = e.target.result;
+          initAudio(arrayBuffer);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    function initAudio(arrayBuffer) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+        const audioSource = audioContext.createBufferSource();
+        audioSource.buffer = buffer;
+        audioAnalyser = audioContext.createAnalyser();
+        audioAnalyser.fftSize = 256;
+        const bufferLength = audioAnalyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        audioSource.connect(audioAnalyser);
+        audioAnalyser.connect(audioContext.destination);
+        audioSource.start();
+        animate();
+      });
+    }
+
+    // Animation Loop
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (audioAnalyser) {
+        audioAnalyser.getByteFrequencyData(dataArray);
+
+        // Analyze bass frequencies for ball bounce
+        const bassFrequencyData = dataArray.slice(0, dataArray.length / 4);
+        const bassAverage = bassFrequencyData.reduce((sum, value) => sum + value, 0) / bassFrequencyData.length;
+        const bounceHeight = bassAverage / 256 * 5; // Scale bounce height
+
+        // Update ball position
+        ball.position.y = bounceHeight;
+
+        // Rotate particle system
+        particleSystem.rotation.y += 0.005;
+        particleSystem.rotation.z += 0.005;
+
+        // Update particle sizes
+        const sizes = particles.attributes.size.array;
+        for (let i = 0; i < particleCount; i++) {
+          sizes[i] = (bassAverage / 256) * 20;
+        }
+        particles.attributes.size.needsUpdate = true;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Handle Window Resize
+    window.addEventListener('resize', function() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
