@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, renderer, controls, model;
+let scene, camera, renderer, controls, model1, model2;
 
 function init() {
     scene = new THREE.Scene();
@@ -23,6 +23,7 @@ function init() {
     scene.add(light);
     
     loadModel();
+    loadModel();
     animate();
     window.addEventListener('keydown', onKeyDown);
     
@@ -36,44 +37,47 @@ function init() {
 }
 
 function loadModel() {
-    var temp_arr = []
     const loader = new GLTFLoader();
-    loader.load('../hintze_hall.glb', function(gltf) {
-        model = gltf.scene;
-        temp_arr = [gltf.scene, gltf.scene]
-        // for (let i = 0; i < temp_arr.length; i++) {
-        //     scene.add(temp_arr[i]);
-        // }
-        scene.add(model);
+    loader.load('../buildify_2.0.glb', function(gltf) {
+        if (model1) {
+            model2 = gltf.scene;
+            scene.add(model2);
+        }
+        else {
+            model1 = gltf.scene;
+            scene.add(model1);
+        }
     }, undefined, function(error) {
         console.error('Error loading model:', error);
     });
 }
 
 function removeModel() {
-    if (model) {
-        // console.log(temp_arr)
-        // scene.remove(temp_arr.shift());
-        scene.remove(model);
-        model = null;
+    if (model2) {
+        scene.remove(model2);
+        model2 = null;
+    }
+    else {
+        scene.remove(model1);
+        model1 = null;
     }
 }
 
 function onKeyDown(event) {
-    if (!model) return;
+    if (!model2) return;
     const moveDistance = 0.8;
     switch(event.key) {
         case 'ArrowDown':
-            model.position.z -= moveDistance;
+            model2.position.z -= moveDistance;
             break;
         case 'ArrowUp':
-            model.position.z += moveDistance;
+            model2.position.z += moveDistance;
             break;
         case 'ArrowRight':
-            model.position.x -= moveDistance;
+            model2.position.x -= moveDistance;
             break;
         case 'ArrowLeft':
-            model.position.x += moveDistance;
+            model2.position.x += moveDistance;
             break;
     }
 }
