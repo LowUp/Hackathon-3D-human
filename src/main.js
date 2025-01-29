@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, renderer, controls, terrain;
+let scene, camera, renderer, controls, terrain, user;
 let models = {}; // Dictionary to store models
 
 function init() {
@@ -23,9 +23,10 @@ function init() {
     light.position.set(5, 5, 5);
     scene.add(light);
     
-    loadModel('terrain', '../buildify_2.0.glb');
-    loadModel('model1', '../building_1.glb');
-    loadModel('model2', '../building_1.glb');
+    loadModel('terrain', '../models/buildify_2.0.glb');
+    loadModel('model1', '../models/PooleGatewayBuilding.glb.glb');
+    loadModel('model2', '../models/building_1.glb');
+    addUser();
     animate();
     window.addEventListener('keydown', onKeyDown);
     
@@ -51,6 +52,14 @@ function loadModel(name, path) {
     });
 }
 
+function addUser() {
+    const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+    const userMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    user = new THREE.Mesh(userGeometry, userMaterial);
+    user.position.set(0, 0.5, 0);
+    scene.add(user);
+}
+
 function removeModel(name) {
     if (models[name]) {
         scene.remove(models[name]);
@@ -59,22 +68,24 @@ function removeModel(name) {
 }
 
 function onKeyDown(event) {
-    if (!models['model2']) return;
+    if (!user) return;
     const moveDistance = 0.8;
     switch(event.key) {
         case 'ArrowDown':
-            models['model2'].position.z -= moveDistance;
+            user.position.z -= moveDistance;
             break;
         case 'ArrowUp':
-            models['model2'].position.z += moveDistance;
+            user.position.z += moveDistance;
             break;
         case 'ArrowRight':
-            models['model2'].position.x -= moveDistance;
+            user.position.x -= moveDistance;
             break;
         case 'ArrowLeft':
-            models['model2'].position.x += moveDistance;
+            user.position.x += moveDistance;
             break;
     }
+    camera.position.set(user.position.x, user.position.y + 2, user.position.z + 5);
+    camera.lookAt(user.position);
 }
 
 function animate() {
