@@ -16,7 +16,7 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaaaaa);
     
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(155, window.innerWidth / window.innerHeight, 0.1, 1000);
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -84,11 +84,24 @@ function loadModel(name, path) {
         // Traverse the scene to find and manipulate individual objects
         gltf.scene.traverse(function (child) {
             if (child.isMesh) {
-            console.log('Mesh found:', child.name);
+            console.log('Mesh found:', child.name, child);
             // You can manipulate the child here, e.g., position, rotation, scale
-            child.position.set(1, 2, 3); // Set to desired coordinates
+            // child.position.set(1000, 2000, 3000); // Set to desired coordinates
+            child.
         }}
         );
+
+        // Example: Accessing a specific object by name
+        const specificObject = gltf.scene.getObjectByName('Allsebrook_Lecture_Theatre_2'); // Replace with your object's name
+        if (specificObject) {
+            // Locate the object by setting its position
+            // specificObject.position.set(1, 2, 3); // Set to desired coordinates
+            console.log('Located Object:', specificObject.name, specificObject.position);
+            // scene.remove(specificObject.name);
+            child.position.set(1000, 2000, 3000);
+        } else {
+            console.warn('Object with the specified name not found.');
+        }
 
     }, undefined, function(error) {
         console.error(`Error loading model ${name}:`, error);
@@ -99,7 +112,7 @@ function addUser() {
     const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
     const userMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     user = new THREE.Mesh(userGeometry, userMaterial);
-    user.position.set(0, 5.5, 0);
+    user.position.set(1, 2, 3);
     scene.add(user);
     
     camera.position.set(user.position.x, user.position.y + 1, user.position.z);
