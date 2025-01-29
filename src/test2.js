@@ -26,9 +26,9 @@ function init() {
     light.position.set(5, 5, 5);
     scene.add(light);
     
-    loadModel('terrain', '../models/buildify_2.0.glb');
-    loadModel('model1', '../models/PooleGatewayBuilding.glb');
-    loadModel('model2', '../models/building_1.glb');
+    loadModel('terrain', '../models/Bournemouth-Uni.glb');
+    // loadModel('model1', '../models/PooleGatewayBuilding.glb');
+    // loadModel('model2', '../models/building_1.glb');
     addUser();
     animate();
     window.addEventListener('keydown', onKeyDown);
@@ -80,6 +80,16 @@ function loadModel(name, path) {
         models[name] = gltf.scene;
         scene.add(models[name]); // Load all models at initialization
         activeModels.add(name);
+
+        // Traverse the scene to find and manipulate individual objects
+        gltf.scene.traverse(function (child) {
+            if (child.isMesh) {
+            console.log('Mesh found:', child.name);
+            // You can manipulate the child here, e.g., position, rotation, scale
+            child.position.set(1, 2, 3); // Set to desired coordinates
+        }}
+        );
+
     }, undefined, function(error) {
         console.error(`Error loading model ${name}:`, error);
     });
@@ -89,7 +99,7 @@ function addUser() {
     const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
     const userMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     user = new THREE.Mesh(userGeometry, userMaterial);
-    user.position.set(0, 0.5, 0);
+    user.position.set(0, 5.5, 0);
     scene.add(user);
     
     camera.position.set(user.position.x, user.position.y + 1, user.position.z);
