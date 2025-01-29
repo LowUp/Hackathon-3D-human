@@ -87,7 +87,7 @@ function loadModel(name, path) {
             console.log('Mesh found:', child.name, child);
             // You can manipulate the child here, e.g., position, rotation, scale
             // child.position.set(1000, 2000, 3000); // Set to desired coordinates
-            child.
+            // chil
         }}
         );
 
