@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, renderer, controls, model1, model2;
+let scene, camera, renderer, controls, terrain;
+let models = {}; // Dictionary to store models
 
 function init() {
     scene = new THREE.Scene();
@@ -22,8 +23,9 @@ function init() {
     light.position.set(5, 5, 5);
     scene.add(light);
     
-    loadModel();
-    loadModel();
+    loadModel('terrain', '../buildify_2.0.glb');
+    loadModel('model1', '../building_1.glb');
+    loadModel('model2', '../building_1.glb');
     animate();
     window.addEventListener('keydown', onKeyDown);
     
@@ -33,51 +35,44 @@ function init() {
     removeButton.style.top = '10px';
     removeButton.style.left = '10px';
     document.body.appendChild(removeButton);
-    removeButton.addEventListener('click', removeModel);
-}
-
-function loadModel() {
-    const loader = new GLTFLoader();
-    loader.load('../buildify_2.0.glb', function(gltf) {
-        if (model1) {
-            model2 = gltf.scene;
-            scene.add(model2);
-        }
-        else {
-            model1 = gltf.scene;
-            scene.add(model1);
-        }
-    }, undefined, function(error) {
-        console.error('Error loading model:', error);
+    removeButton.addEventListener('click', () => {
+        const modelName = prompt('Enter model name to remove:');
+        removeModel(modelName);
     });
 }
 
-function removeModel() {
-    if (model2) {
-        scene.remove(model2);
-        model2 = null;
-    }
-    else {
-        scene.remove(model1);
-        model1 = null;
+function loadModel(name, path) {
+    const loader = new GLTFLoader();
+    loader.load(path, function(gltf) {
+        models[name] = gltf.scene;
+        scene.add(models[name]);
+    }, undefined, function(error) {
+        console.error(`Error loading model ${name}:`, error);
+    });
+}
+
+function removeModel(name) {
+    if (models[name]) {
+        scene.remove(models[name]);
+        delete models[name];
     }
 }
 
 function onKeyDown(event) {
-    if (!model2) return;
+    if (!models['model2']) return;
     const moveDistance = 0.8;
     switch(event.key) {
         case 'ArrowDown':
-            model2.position.z -= moveDistance;
+            models['model2'].position.z -= moveDistance;
             break;
         case 'ArrowUp':
-            model2.position.z += moveDistance;
+            models['model2'].position.z += moveDistance;
             break;
         case 'ArrowRight':
-            model2.position.x -= moveDistance;
+            models['model2'].position.x -= moveDistance;
             break;
         case 'ArrowLeft':
-            model2.position.x += moveDistance;
+            models['model2'].position.x += moveDistance;
             break;
     }
 }
