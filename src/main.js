@@ -41,7 +41,7 @@ function loadModel() {
     loader.load('../hintze_hall.glb', function(gltf) {
         model = gltf.scene;
         temp_arr = [gltf.scene, gltf.scene]
-        // for (let i = 0; i < temp_arr.length; i) {
+        // for (let i = 0; i < temp_arr.length; i++) {
         //     scene.add(temp_arr[i]);
         // }
         scene.add(model);
@@ -52,6 +52,8 @@ function loadModel() {
 
 function removeModel() {
     if (model) {
+        // console.log(temp_arr)
+        // scene.remove(temp_arr.shift());
         scene.remove(model);
         model = null;
     }
