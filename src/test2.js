@@ -81,6 +81,22 @@ function loadMainModel(path) {
     });
 }
 
+function updateModels(year) {
+    activeModels.forEach(name => {
+        if (models[name]) models[name].visible = false;
+    });
+    activeModels.clear();
+    
+    modelList[year].forEach(name => {
+        if (models[name]) {
+            models[name].visible = true;
+            labels[name].visible = true;
+            activeModels.add(name);
+        }
+    });
+    // updateLabels();
+}
+
 function setupUI() {
     const sliderContainer = document.createElement('div');
     sliderContainer.style.position = 'absolute';
