@@ -86,6 +86,11 @@ function init() {
     });
 }
 
+function randomHexColor() {
+    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  }
+
+  
 function loadModel(name, path) {
     const loader = new GLTFLoader();
     loader.load(path, function(gltf) {
@@ -97,7 +102,7 @@ function loadModel(name, path) {
         gltf.scene.traverse(function (child) {
             if (child.isMesh) {
             console.log('Mesh found:', child.name, child);
-            child.material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            // child.material = new THREE.MeshBasicMaterial({ color: randomHexColor() });
             // child.position.set(Math.random(1000), Math.random(1000), Math.random(1000));
             // You can manipulate the child here, e.g., position, rotation, scale
             // child.position.set(1000, 2000, 3000); // Set to desired coordinates
