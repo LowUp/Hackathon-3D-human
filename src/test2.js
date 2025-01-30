@@ -1,32 +1,44 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, renderer, terrain, user;
+// Global variables
+let scene, camera,droneCamera, renderer, terrain, user, insetWidth, insetHeight,aspectRatio;
+aspectRatio = window.innerWidth / window.innerHeight;
+
 let models = {}; // Dictionary to store models
+
+
 let activeModels = new Set(); // Track currently active models
 let modelList = {
     '2025': ['model2', 'model1', 'terrain'],
     '2024': ['model2', 'terrain'],
     '2023': ['terrain'],
 };
+
+
 let userDirection = new THREE.Vector3();
-let moveSpeed = 0.2;
+let moveSpeed = 0.5;
 
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaaaaa);
     
-    camera = new THREE.PerspectiveCamera(155, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(155, aspectRatio, 0.1, 1000);
+
+    // Adding Overlay Map - K.O
+    // droneCamera = new THREE.PerspectiveCamera(90, aspectRatio, 0.01, 1000);
+    
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
+    // Use Ambient Light instead - K.O
+    const amblight = new THREE.AmbientLight(0xffffff, 1);
+    amblight.position.set(1, 1, 1);
+    scene.add(amblight);
     
-    loadModel('terrain', '../models/Bournemouth-Uni.glb');
+    loadModel('terrain', '../Bournemouth-Uni.glb');
     // loadModel('model1', '../models/PooleGatewayBuilding.glb');
     // loadModel('model2', '../models/building_1.glb');
     addUser();
@@ -85,6 +97,8 @@ function loadModel(name, path) {
         gltf.scene.traverse(function (child) {
             if (child.isMesh) {
             console.log('Mesh found:', child.name, child);
+            child.material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            // child.position.set(Math.random(1000), Math.random(1000), Math.random(1000));
             // You can manipulate the child here, e.g., position, rotation, scale
             // child.position.set(1000, 2000, 3000); // Set to desired coordinates
             // chil
@@ -98,7 +112,7 @@ function loadModel(name, path) {
             // specificObject.position.set(1, 2, 3); // Set to desired coordinates
             console.log('Located Object:', specificObject.name, specificObject.position);
             // scene.remove(specificObject.name);
-            child.position.set(1000, 2000, 3000);
+            
         } else {
             console.warn('Object with the specified name not found.');
         }
@@ -117,6 +131,7 @@ function addUser() {
     
     camera.position.set(user.position.x, user.position.y + 1, user.position.z);
     camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
+    
 }
 
 function removeModel(name) {
@@ -177,7 +192,7 @@ function animate() {
         user.position.z - Math.cos(user.rotation.y) * 2
     );
     camera.lookAt(user.position);
-    
+
     renderer.render(scene, camera);
 }
 
