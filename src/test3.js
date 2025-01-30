@@ -9,10 +9,29 @@ let models = {}; // Dictionary to store models
 
 let activeModels = new Set(); // Track currently active models
 let modelList = {
-    '2025': ['model2', 'model1', 'terrain'],
-    '2024': ['model2', 'terrain'],
-    '2023': ['terrain'],
+   '2025': [ 
+        {"name" : 'Allsebrook_Lecture_Theatre_1', "color" : "#008000","size" :  2},//Green
+        {"name" : 'Block_1_1-16_1 Mesh',"color" : "#ffc0cb","size" : 9},//Pink
+        {"name" : 'Christchurch_House_1 Mesh', "color" : "#964B00","size" : 3},//Brown
+        {"name" : 'Dorset_House_1 Mesh', "color" : "#FFFF00","size" : 4},//Yellow
+        {"name" : 'Kimmeridge_House_1 Mesh', "color" : "#800080","size" : 4},//Purple
+        {"name" : 'Poole_Gateway_Building_1 Mesh', "color" : "#0000FF", "size" : 5},//Blue
+     ],
+    '2024': [
+        {"name" : 'Allsebrook_Lecture_Theatre_1', "color" : "#008000","size" : 2},//Green
+        {"name" : 'Christchurch_House_1 Mesh', "color" : "#964B00","size" : 3},//Brown
+        {"name" : 'Dorset_House_1 Mesh', "color" : "#FFFF00","size" : 3},//Yellow
+        {"name" : 'Kimmeridge_House_1 Mesh', "color" : "#800080","size" : 4},//Purple
+        {"name" : 'Poole_Gateway_Building_1 Mesh', "color" : "#0000FF","size" : 4},//Blue]
+     ],
+    '2023': [
+        {"name" : 'Christchurch_House_1 Mesh', "color" : "#964B00","size" : 2},//Brown
+        {"name" : 'Dorset_House_1 Mesh', "color" : "#FFFF00","size" : 2},//Yellow
+        {"name" : 'Kimmeridge_House_1 Mesh', "color" : "#800080","size" : 2},//Purple
+        {"name" : 'Poole_Gateway_Building_1 Mesh', "color" : "#0000FF","size" : 3},//Blue],
+    ],
 };
+
 
 let userDirection = new THREE.Vector3();
 let moveSpeed = 0.5;
@@ -96,10 +115,36 @@ function loadModel(name, path) {
         models[name] = gltf.scene;
         scene.add(models[name]); // Load all models at initialization
         activeModels.add(name);
+
+        // Traverse the scene to find and manipulate individual objects
+        gltf.scene.traverse(function (child) {
+            if (child.isMesh) {
+            console.log('Mesh found:', child.name, child);
+            
+
+            // 
+        }}
+        );
+
+        // Example: Accessing a specific object by name
+        const specificObject = gltf.scene.getObjectByName('Allsebrook_Lecture_Theatre_2'); // Replace with your object's name
+        if (specificObject) {
+            // Locate the object by setting its position
+            // specificObject.position.set(1, 2, 3); // Set to desired coordinates
+            console.log('Located Object:', specificObject.name, specificObject.position);
+            // scene.remove(specificObject.name);
+            
+        } else {
+            console.warn('Object with the specified name not found.');
+        }
+
     }, undefined, function(error) {
         console.error(`Error loading model ${name}:`, error);
     });
 }
+
+// 
+
 
 function addUser() {
     const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
@@ -132,6 +177,8 @@ function updateModels(year) {
         }
     });
 }
+
+
 
 function onKeyDown(event) {
     switch(event.key) {
