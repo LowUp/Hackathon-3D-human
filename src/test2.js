@@ -38,7 +38,7 @@ function init() {
     amblight.position.set(1, 1, 1);
     scene.add(amblight);
     
-    loadModel('terrain', '../Bournemouth-Uni.glb');
+    loadModel('terrain', '../models/Bournemouth-Uni.glb');
     // loadModel('model1', '../models/PooleGatewayBuilding.glb');
     // loadModel('model2', '../models/building_1.glb');
     addUser();
