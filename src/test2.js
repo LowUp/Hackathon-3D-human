@@ -1,20 +1,16 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-// Global variables
-let scene, camera,droneCamera, renderer, terrain, user, insetWidth, insetHeight,aspectRatio;
+let scene, camera, renderer, terrain, user, aspectRatio;
 aspectRatio = window.innerWidth / window.innerHeight;
 
-let models = {}; // Dictionary to store models
-
-
-let activeModels = new Set(); // Track currently active models
+let models = {}; // Store individual child objects from the main model
+let activeModels = new Set();
 let modelList = {
-    '2025': ['model2', 'model1', 'terrain'],
-    '2024': ['model2', 'terrain'],
-    '2023': ['terrain'],
+    '2025': [],
+    '2024': [],
+    '2023': [],
 };
-
 
 let userDirection = new THREE.Vector3();
 let moveSpeed = 0.5;
@@ -23,40 +19,57 @@ function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaaaaa);
     
-    camera = new THREE.PerspectiveCamera(155, aspectRatio, 0.1, 1000);
-
-    // Adding Overlay Map - K.O
-    // droneCamera = new THREE.PerspectiveCamera(90, aspectRatio, 0.01, 1000);
-    
+    camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     
-    // Use Ambient Light instead - K.O
     const amblight = new THREE.AmbientLight(0xffffff, 1);
-    amblight.position.set(1, 1, 1);
     scene.add(amblight);
     
-    loadModel('terrain', '../models/Bournemouth-Uni.glb');
-    // loadModel('model1', '../models/PooleGatewayBuilding.glb');
-    // loadModel('model2', '../models/building_1.glb');
+    loadMainModel('../models/Bournemouth-Uni.glb');
     addUser();
     animate();
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     
-    const removeButton = document.createElement('button');
-    removeButton.innerText = 'Remove Model';
-    removeButton.style.position = 'absolute';
-    removeButton.style.top = '10px';
-    removeButton.style.left = '10px';
-    document.body.appendChild(removeButton);
-    removeButton.addEventListener('click', () => {
-        const modelName = prompt('Enter model name to remove:');
-        removeModel(modelName);
+    setupUI();
+}
+
+function loadMainModel(path) {
+    const loader = new GLTFLoader();
+    loader.load(path, function(gltf) {
+        terrain = gltf.scene;
+        scene.add(terrain);
+        
+        // Store child objects by name in the models dictionary
+        terrain.traverse(function(child) {
+            if (child.isMesh) {
+                console.log(child.name, child)
+                modelList['2025'].push(child.name);
+                
+                if (Math.random(0, 1) < 0.5) {
+                    modelList['2024'].push(child.name)
+                } 
+
+                if (Math.random(0, 1) < 0.3) {
+                    modelList['2023'].push(child.name)
+                }
+
+                // modelList['2024'].push(child.name);
+                models[child.name] = child;
+                // child.visible = false; // Initially hide all objects
+            }
+        });
+        
+        updateModels(2025); // Load initial objects
+    }, undefined, function(error) {
+        console.error('Error loading model:', error);
     });
-    
+}
+
+function setupUI() {
     const sliderContainer = document.createElement('div');
     sliderContainer.style.position = 'absolute';
     sliderContainer.style.bottom = '20px';
@@ -86,47 +99,19 @@ function init() {
     });
 }
 
-function loadModel(name, path) {
-    const loader = new GLTFLoader();
-    loader.load(path, function(gltf) {
-        models[name] = gltf.scene;
-        scene.add(models[name]); // Load all models at initialization
-        activeModels.add(name);
-
-        // Traverse the scene to find and manipulate individual objects
-        gltf.scene.traverse(function (child) {
-            if (child.isMesh) {
-            console.log('Mesh found:', child.name, child);
-            child.material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            // child.position.set(Math.random(1000), Math.random(1000), Math.random(1000));
-            // You can manipulate the child here, e.g., position, rotation, scale
-            child.position.set(Math.random(1,20), Math.random(1,20), Math.random(1,20)); // Set to desired coordinates
-            // chil
-        }}
-        );
-
-        // Example: Accessing a specific object by name
-        const specificObject = gltf.scene.getObjectByName('DESIGN_&_ENGINEERING_INNOVATION_CENTRE_1'); // Replace with your object's name
-        if (specificObject) {
-            // Locate the object by setting its position
-            // specificObject.position.set(1, 2, 3); // Set to desired coordinates
-            specificObject.material = new THREE.MeshBasicMaterial({ color: randomHexColor() });
-            gltf.scene.remove(specificObject.name);
-            console.log('Located Object:', specificObject.name, specificObject.position);
-            // specificObject.parent.remove(specificObject); // Proper way to remove an element.
-            
-        } else {
-            console.warn('Object with the specified name not found.');
+function updateModels(year) {
+    activeModels.forEach(name => {
+        if (models[name]) models[name].visible = false;
+    });
+    activeModels.clear();
+    
+    modelList[year].forEach(name => {
+        if (models[name]) {
+            models[name].visible = true;
+            activeModels.add(name);
         }
-
-    }, undefined, function(error) {
-        console.error(`Error loading model ${name}:`, error);
     });
 }
-
-function randomHexColor() {
-    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-  }
 
 function addUser() {
     const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
@@ -137,32 +122,6 @@ function addUser() {
     
     camera.position.set(user.position.x, user.position.y + 1, user.position.z);
     camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
-    
-}
-
-function removeModel(name) {
-    if (models[name] && scene.children.includes(models[name])) {
-        scene.remove(models[name]);
-        activeModels.delete(name);
-    }
-}
-
-function addModel(name) {
-    if (models[name] && !scene.children.includes(models[name])) {
-        scene.add(models[name]);
-        activeModels.add(name);
-    }
-}
-
-function updateModels(year) {
-    activeModels.forEach(model => scene.remove(models[model]));
-    activeModels.clear();
-    modelList[year].forEach(name => {
-        if (models[name]) {
-            scene.add(models[name]);
-            activeModels.add(name);
-        }
-    });
 }
 
 function onKeyDown(event) {
@@ -198,7 +157,7 @@ function animate() {
         user.position.z - Math.cos(user.rotation.y) * 2
     );
     camera.lookAt(user.position);
-
+    
     renderer.render(scene, camera);
 }
 
