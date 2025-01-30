@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, renderer, terrain, user, aspectRatio;
+let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio;
 aspectRatio = window.innerWidth / window.innerHeight;
 
 let models = {}; // Store individual child objects from the main model
@@ -15,11 +15,23 @@ let modelList = {
 let userDirection = new THREE.Vector3();
 let moveSpeed = 0.5;
 
+let currentCamera = 'thirdPerson'; // Track current camera ('thirdPerson' or 'birdEye')
+
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaaaaa);
+
+    let currentCamera = 'thirdPerson'; // Track current camera ('thirdPerson' or 'birdEye')
     
     camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+
+    // Create third-person camera
+    thirdPersonCamera = new THREE.PerspectiveCamera(155, aspectRatio, 0.1, 1000);
+    
+    // Create bird-eye camera (fixed above the scene)
+    droneCamera = new THREE.PerspectiveCamera(90, aspectRatio, 0.01, 1000);
+    droneCamera.position.set(0, 50, 0); // Set initial position above the scene
+    droneCamera.lookAt(0, 0, 0); // Look at the center of the scene
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -120,8 +132,13 @@ function addUser() {
     user.position.set(1, 2, 3);
     scene.add(user);
     
-    camera.position.set(user.position.x, user.position.y + 1, user.position.z);
-    camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
+    // camera.position.set(user.position.x, user.position.y + 1, user.position.z);
+    // camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
+    // Set the initial camera positions
+    thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
+    thirdPersonCamera.lookAt(user.position);
+    
+    camera = thirdPersonCamera; // Set the default camera to third-person
 }
 
 function onKeyDown(event) {
@@ -133,10 +150,15 @@ function onKeyDown(event) {
             userDirection.set(0, 0, moveSpeed);
             break;
         case 'ArrowLeft':
-            user.rotation.y += 0.1;
+            // user.rotation.y += 0.1;
+            userDirection.set(-moveSpeed, 0, 0); // Left (move along the X-axis)
             break;
         case 'ArrowRight':
-            user.rotation.y -= 0.1;
+            // user.rotation.y -= 0.1;
+            userDirection.set(moveSpeed, 0, 0); 
+            break;
+        case ' ':
+            toggleCamera(); // Toggle camera view on spacebar press
             break;
     }
 }
@@ -145,18 +167,46 @@ function onKeyUp(event) {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         userDirection.set(0, 0, 0);
     }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        userDirection.set(0, 0, 0);
+    }
+}
+
+function toggleCamera() {
+    currentCamera = currentCamera === 'thirdPerson' ? 'birdEye' : 'thirdPerson';
 }
 
 function animate() {
     requestAnimationFrame(animate);
     user.translateZ(userDirection.z);
+
+    user.position.x += userDirection.x; // Move the user left/right
+
+    // Update camera position
+    if (currentCamera === 'thirdPerson') {
+        // Update third-person camera position
+        thirdPersonCamera.position.set(
+            user.position.x - Math.sin(user.rotation.y) * 5,
+            user.position.y + 2,
+            user.position.z - Math.cos(user.rotation.y) * 5
+        );
+        thirdPersonCamera.lookAt(user.position);
+        camera = thirdPersonCamera;
+    } else {
+        // Bird-eye camera moves based on the user's position
+        droneCamera.position.x = user.position.x;
+        droneCamera.position.z = user.position.z;
+        droneCamera.position.y = 50; // Keep bird-eye camera above the scene
+        droneCamera.lookAt(user.position);
+        camera = droneCamera;
+    }
     
-    camera.position.set(
-        user.position.x - Math.sin(user.rotation.y) * 2,
-        user.position.y + 1,
-        user.position.z - Math.cos(user.rotation.y) * 2
-    );
-    camera.lookAt(user.position);
+    // camera.position.set(
+    //     user.position.x - Math.sin(user.rotation.y) * 2,
+    //     user.position.y + 1,
+    //     user.position.z - Math.cos(user.rotation.y) * 2
+    // );
+    // camera.lookAt(user.position);
     
     renderer.render(scene, camera);
 }

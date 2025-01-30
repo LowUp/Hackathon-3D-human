@@ -1,50 +1,87 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, renderer, terrain, user;
-let models = {}; // Dictionary to store models
-let activeModels = new Set(); // Track currently active models
+let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio;
+aspectRatio = window.innerWidth / window.innerHeight;
+
+let models = {}; // Store individual child objects from the main model
+let activeModels = new Set();
 let modelList = {
-    '2025': ['model2', 'model1', 'terrain'],
-    '2024': ['model2', 'terrain'],
-    '2023': ['terrain'],
+    '2025': [],
+    '2024': [],
+    '2023': [],
 };
+
 let userDirection = new THREE.Vector3();
-let moveSpeed = 0.2;
+let moveSpeed = 0.5;
+
+let currentCamera = 'thirdPerson'; // Track current camera ('thirdPerson' or 'birdEye')
 
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaaaaa);
+
+    let currentCamera = 'thirdPerson'; // Track current camera ('thirdPerson' or 'birdEye')
     
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+
+    // Create third-person camera
+    thirdPersonCamera = new THREE.PerspectiveCamera(155, aspectRatio, 0.1, 1000);
+    
+    // Create bird-eye camera (fixed above the scene)
+    droneCamera = new THREE.PerspectiveCamera(90, aspectRatio, 0.01, 1000);
+    droneCamera.position.set(0, 50, 0); // Set initial position above the scene
+    droneCamera.lookAt(0, 0, 0); // Look at the center of the scene
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
+    const amblight = new THREE.AmbientLight(0xffffff, 1);
+    scene.add(amblight);
     
-    loadModel('terrain', '../models/buildify_2.0.glb');
-    loadModel('model1', '../models/PooleGatewayBuilding.glb');
-    loadModel('model2', '../models/building_1.glb');
+    loadMainModel('../models/Bournemouth-Uni.glb');
     addUser();
     animate();
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     
-    const removeButton = document.createElement('button');
-    removeButton.innerText = 'Remove Model';
-    removeButton.style.position = 'absolute';
-    removeButton.style.top = '10px';
-    removeButton.style.left = '10px';
-    document.body.appendChild(removeButton);
-    removeButton.addEventListener('click', () => {
-        const modelName = prompt('Enter model name to remove:');
-        removeModel(modelName);
+    setupUI();
+}
+
+function loadMainModel(path) {
+    const loader = new GLTFLoader();
+    loader.load(path, function(gltf) {
+        terrain = gltf.scene;
+        scene.add(terrain);
+        
+        // Store child objects by name in the models dictionary
+        terrain.traverse(function(child) {
+            if (child.isMesh) {
+                console.log(child.name, child)
+                modelList['2025'].push(child.name);
+                
+                if (Math.random(0, 1) < 0.5) {
+                    modelList['2024'].push(child.name)
+                } 
+
+                if (Math.random(0, 1) < 0.3) {
+                    modelList['2023'].push(child.name)
+                }
+
+                // modelList['2024'].push(child.name);
+                models[child.name] = child;
+                // child.visible = false; // Initially hide all objects
+            }
+        });
+        
+        updateModels(2025); // Load initial objects
+    }, undefined, function(error) {
+        console.error('Error loading model:', error);
     });
-    
+}
+
+function setupUI() {
     const sliderContainer = document.createElement('div');
     sliderContainer.style.position = 'absolute';
     sliderContainer.style.bottom = '20px';
@@ -74,14 +111,17 @@ function init() {
     });
 }
 
-function loadModel(name, path) {
-    const loader = new GLTFLoader();
-    loader.load(path, function(gltf) {
-        models[name] = gltf.scene;
-        scene.add(models[name]); // Load all models at initialization
-        activeModels.add(name);
-    }, undefined, function(error) {
-        console.error(`Error loading model ${name}:`, error);
+function updateModels(year) {
+    activeModels.forEach(name => {
+        if (models[name]) models[name].visible = false;
+    });
+    activeModels.clear();
+    
+    modelList[year].forEach(name => {
+        if (models[name]) {
+            models[name].visible = true;
+            activeModels.add(name);
+        }
     });
 }
 
@@ -89,36 +129,16 @@ function addUser() {
     const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
     const userMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     user = new THREE.Mesh(userGeometry, userMaterial);
-    user.position.set(0, 0.5, 0);
+    user.position.set(1, 2, 3);
     scene.add(user);
     
-    camera.position.set(user.position.x, user.position.y + 1, user.position.z);
-    camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
-}
-
-function removeModel(name) {
-    if (models[name] && scene.children.includes(models[name])) {
-        scene.remove(models[name]);
-        activeModels.delete(name);
-    }
-}
-
-function addModel(name) {
-    if (models[name] && !scene.children.includes(models[name])) {
-        scene.add(models[name]);
-        activeModels.add(name);
-    }
-}
-
-function updateModels(year) {
-    activeModels.forEach(model => scene.remove(models[model]));
-    activeModels.clear();
-    modelList[year].forEach(name => {
-        if (models[name]) {
-            scene.add(models[name]);
-            activeModels.add(name);
-        }
-    });
+    // camera.position.set(user.position.x, user.position.y + 1, user.position.z);
+    // camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
+    // Set the initial camera positions
+    thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
+    thirdPersonCamera.lookAt(user.position);
+    
+    camera = thirdPersonCamera; // Set the default camera to third-person
 }
 
 function onKeyDown(event) {
@@ -130,10 +150,15 @@ function onKeyDown(event) {
             userDirection.set(0, 0, moveSpeed);
             break;
         case 'ArrowLeft':
-            user.rotation.y += 0.1;
+            // user.rotation.y += 0.1;
+            userDirection.set(-moveSpeed, 0, 0); // Left (move along the X-axis)
             break;
         case 'ArrowRight':
-            user.rotation.y -= 0.1;
+            // user.rotation.y -= 0.1;
+            userDirection.set(moveSpeed, 0, 0); 
+            break;
+        case ' ':
+            toggleCamera(); // Toggle camera view on spacebar press
             break;
     }
 }
@@ -142,18 +167,46 @@ function onKeyUp(event) {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         userDirection.set(0, 0, 0);
     }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        userDirection.set(0, 0, 0);
+    }
+}
+
+function toggleCamera() {
+    currentCamera = currentCamera === 'thirdPerson' ? 'birdEye' : 'thirdPerson';
 }
 
 function animate() {
     requestAnimationFrame(animate);
     user.translateZ(userDirection.z);
+
+    user.position.x += userDirection.x; // Move the user left/right
+
+    // Update camera position
+    if (currentCamera === 'thirdPerson') {
+        // Update third-person camera position
+        thirdPersonCamera.position.set(
+            user.position.x - Math.sin(user.rotation.y) * 5,
+            user.position.y + 2,
+            user.position.z - Math.cos(user.rotation.y) * 5
+        );
+        thirdPersonCamera.lookAt(user.position);
+        camera = thirdPersonCamera;
+    } else {
+        // Bird-eye camera moves based on the user's position
+        droneCamera.position.x = user.position.x;
+        droneCamera.position.z = user.position.z;
+        droneCamera.position.y = 50; // Keep bird-eye camera above the scene
+        droneCamera.lookAt(user.position);
+        camera = droneCamera;
+    }
     
-    camera.position.set(
-        user.position.x - Math.sin(user.rotation.y) * 2,
-        user.position.y + 1,
-        user.position.z - Math.cos(user.rotation.y) * 2
-    );
-    camera.lookAt(user.position);
+    // camera.position.set(
+    //     user.position.x - Math.sin(user.rotation.y) * 2,
+    //     user.position.y + 1,
+    //     user.position.z - Math.cos(user.rotation.y) * 2
+    // );
+    // camera.lookAt(user.position);
     
     renderer.render(scene, camera);
 }
