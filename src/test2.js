@@ -100,18 +100,20 @@ function loadModel(name, path) {
             child.material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
             // child.position.set(Math.random(1000), Math.random(1000), Math.random(1000));
             // You can manipulate the child here, e.g., position, rotation, scale
-            // child.position.set(1000, 2000, 3000); // Set to desired coordinates
+            child.position.set(Math.random(1,20), Math.random(1,20), Math.random(1,20)); // Set to desired coordinates
             // chil
         }}
         );
 
         // Example: Accessing a specific object by name
-        const specificObject = gltf.scene.getObjectByName('Allsebrook_Lecture_Theatre_2'); // Replace with your object's name
+        const specificObject = gltf.scene.getObjectByName('DESIGN_&_ENGINEERING_INNOVATION_CENTRE_1'); // Replace with your object's name
         if (specificObject) {
             // Locate the object by setting its position
             // specificObject.position.set(1, 2, 3); // Set to desired coordinates
+            specificObject.material = new THREE.MeshBasicMaterial({ color: randomHexColor() });
+            gltf.scene.remove(specificObject.name);
             console.log('Located Object:', specificObject.name, specificObject.position);
-            // scene.remove(specificObject.name);
+            // specificObject.parent.remove(specificObject); // Proper way to remove an element.
             
         } else {
             console.warn('Object with the specified name not found.');
@@ -121,6 +123,10 @@ function loadModel(name, path) {
         console.error(`Error loading model ${name}:`, error);
     });
 }
+
+function randomHexColor() {
+    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  }
 
 function addUser() {
     const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
