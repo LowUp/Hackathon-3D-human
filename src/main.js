@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
-let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio, labelRenderer;
+let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio, labelRenderer, mixer, idle, walk, action_idle, action_walk;
 aspectRatio = window.innerWidth / window.innerHeight;
 
 let models = {}; // Store individual child objects from the main model
@@ -73,14 +73,15 @@ function loadMainModel(path) {
                 
                 if (Math.random(0, 1) < 0.5) {
                     modelList['2024'].push(child.name);
-                }
 
-                if (Math.random(0, 1) < 0.3) {
-                    modelList['2023'].push(child.name);
+                    if (Math.random(0, 1) < 0.5) {
+                        modelList['2023'].push(child.name);
+                    }
+
                 }
 
                 // Change position of objects
-                child.position.set(child.position.x + Math.random() * 2 -1, child.position.y, child.position.z + Math.random() * 2 - 1);
+                child.position.set(Math.random(1, 10), Math.random(1, 10), Math.random(1, 10));
 
                 // Create label for each object
                 createLabel(child);
@@ -180,19 +181,28 @@ function updateLabels() {
 }
 
 function addUser() {
-    const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
-    const userMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    user = new THREE.Mesh(userGeometry, userMaterial);
-    user.position.set(1, 2, 3);
-    scene.add(user);
-    
-    // camera.position.set(user.position.x, user.position.y + 1, user.position.z);
-    // camera.lookAt(user.position.x, user.position.y, user.position.z + 1);
-    // Set the initial camera positions
-    thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
-    thirdPersonCamera.lookAt(user.position);
-    
-    camera = thirdPersonCamera; // Set the default camera to third-person
+    const loader = new GLTFLoader();
+    loader.load('../models/avatar.glb', function (gltf) {
+        user = gltf.scene;
+        user.scale.set(1, 1, 1);  // Set the scale to (1,1,1)
+        user.position.set(1, 0, 3);
+        scene.add(user);
+        idle = gltf.animations[1];
+        walk = gltf.animations[6]
+        mixer = new THREE.AnimationMixer(user);
+        action_walk = mixer.clipAction(walk);
+        action_idle = mixer.clipAction(idle);
+        // Load the default animation
+        if (gltf.animations.length > 0) {
+            action_idle.play();
+        }
+
+        thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
+        thirdPersonCamera.lookAt(user.position);
+        camera = thirdPersonCamera;
+    }, undefined, function (error) {
+        console.error('Error loading avatar:', error);
+    });
 }
 
 function onKeyDown(event) {
@@ -215,14 +225,26 @@ function onKeyDown(event) {
             toggleCamera(); // Toggle camera view on spacebar press
             break;
     }
+    // If the user is moving, update animation
+    if (userDirection.length() > 0) {
+        action_idle.stop(); 
+        action_walk.play();  // Walk animation
+    }
 }
 
 function onKeyUp(event) {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-        userDirection.set(0, 0, 0);
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {     
+        userDirection.set(0, 0, 0);  // Stop moving when no arrow key is pressed
     }
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        userDirection.set(0, 0, 0);
+
+    if (event.key === 'Shift') {
+        isRunning = false;  // Stop running when Shift is released
+    }
+
+    // If no movement, switch to idle animation
+    if (userDirection.length() === 0) {
+        action_walk.stop();
+        action_idle.play();
     }
 }
 
@@ -232,22 +254,44 @@ function toggleCamera() {
 
 function animate() {
     requestAnimationFrame(animate);
-    user.translateZ(userDirection.z);
-    user.position.x += userDirection.x;
+    // user.translateZ(userDirection.z);
+    // user.position.x += userDirection.x;
+    if (user) {
+        // Move user based on userDirection (keyboard input)
+        user.translateX(userDirection.x);
+        user.translateZ(userDirection.z);
 
-    if (currentCamera === 'thirdPerson') {
-        thirdPersonCamera.position.set(
-            user.position.x - Math.sin(user.rotation.y) * 5,
-            user.position.y + 2,
-            user.position.z - Math.cos(user.rotation.y) * 5
-        );
-        thirdPersonCamera.lookAt(user.position);
-        camera = thirdPersonCamera;
-    } else {
-        droneCamera.position.set(user.position.x, 50, user.position.z);
-        droneCamera.lookAt(user.position);
-        camera = droneCamera;
+        // Adjust camera position and make it follow the user
+        if (currentCamera === 'thirdPerson') {
+            thirdPersonCamera.position.set(
+                user.position.x - Math.sin(user.rotation.y) * 5,
+                user.position.y + 2,
+                user.position.z - Math.cos(user.rotation.y) * 5
+            );
+            thirdPersonCamera.lookAt(user.position);
+            camera = thirdPersonCamera;
+        } else {
+            droneCamera.position.set(user.position.x, 50, user.position.z);
+            droneCamera.lookAt(user.position);
+            camera = droneCamera;
+        }
+
+        if (mixer) mixer.update(0.01);
     }
+
+    // if (currentCamera === 'thirdPerson') {
+    //     thirdPersonCamera.position.set(
+    //         user.position.x - Math.sin(user.rotation.y) * 5,
+    //         user.position.y + 2,
+    //         user.position.z - Math.cos(user.rotation.y) * 5
+    //     );
+    //     thirdPersonCamera.lookAt(user.position);
+    //     camera = thirdPersonCamera;
+    // } else {
+    //     droneCamera.position.set(user.position.x, 50, user.position.z);
+    //     droneCamera.lookAt(user.position);
+    //     camera = droneCamera;
+    // }
     
     updateLabels();
     renderer.render(scene, camera);
