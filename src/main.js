@@ -81,7 +81,7 @@ function init() {
     const amblight = new THREE.AmbientLight(0xffffff, 1);
     scene.add(amblight);
     
-    loadMainModel('../models/Bournemouth-Uni.glb');
+    loadMainModel('../models/bourne-final.glb');
     addUser();
     animate();
     window.addEventListener('keydown', onKeyDown);
