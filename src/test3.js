@@ -90,7 +90,7 @@ function init() {
     amblight.position.set(1, 1, 1);
     scene.add(amblight);
     
-    loadModel('terrain', '../models/bourne-final.glb');
+    // loadModel('terrain', '../models/bourne-final.glb');
     addUser();
     animate();
     

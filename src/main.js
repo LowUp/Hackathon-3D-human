@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; 
 
-let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio, labelRenderer, mixer, idle, walk, action_idle, action_walk;
+let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, slider, yearLabel, insetWidth, insetHeight, aspectRatio, labelRenderer, mixer, idle, walk, action_idle, action_walk, orbitCamera;
 aspectRatio = window.innerWidth / window.innerHeight;
 
 let models = {}; // Store individual child objects from the main model
@@ -66,10 +67,29 @@ function init() {
     droneCamera = new THREE.PerspectiveCamera(90, aspectRatio, 0.01, 1000);
     droneCamera.position.set(0, 50, 0); // Set initial position above the scene
     droneCamera.lookAt(0, 0, 0); // Look at the center of the scene
+
+     // Create orbit camera
+    orbitCamera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+    orbitCamera.position.set(10, 10, 10); // Set an initial position
+
+
     
+    // Initialize renderer first since it's needed for OrbitControls
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+
+     // Initialize OrbitControls for the orbitCamera
+     let orbitControls = new OrbitControls(orbitCamera, renderer.domElement);
+     orbitControls.enableDamping = true; // Enable smooth damping
+     orbitControls.dampingFactor = 0.05;
+     orbitControls.screenSpacePanning = false;
+     orbitControls.minDistance = 5;
+     orbitControls.maxDistance = 100;
+     orbitControls.maxPolarAngle = Math.PI / 2; // Limit to prevent flipping
+
+     // Store controls for later use
+    scene.userData.orbitControls = orbitControls;
 
     // Create Label Renderer for 2D text
     labelRenderer = new CSS2DRenderer();
@@ -79,6 +99,7 @@ function init() {
     document.body.appendChild(labelRenderer.domElement);
 
     const amblight = new THREE.AmbientLight(0xffffff, 1);
+    amblight.position.set(1, 1, 1);
     scene.add(amblight);
     
     loadMainModel('../models/Bournemouth-Uni.glb');
@@ -89,6 +110,30 @@ function init() {
     window.addEventListener('resize', onWindowResize);
     
     setupUI();
+}
+
+ // Helper function to capitalize first letter
+ function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// Update year label function
+function updateYearLabel() {
+    yearLabel.innerText = `Year: ${slider.value} | Camera: ${capitalizeFirstLetter(getCameraName(currentCamera))}`;
+}
+
+// Function to get human-readable camera name
+function getCameraName(cameraKey) {
+    switch(cameraKey) {
+        case 'thirdPerson':
+            return 'Third Person';
+        case 'birdEye':
+            return 'Bird Eye';
+        case 'orbit':
+            return 'Orbit';
+        default:
+            return 'Unknown';
+    }
 }
 
 function loadMainModel(path) {
@@ -112,7 +157,7 @@ function loadMainModel(path) {
 
                 if (!building_list['2023'].includes(child.name)) {
                     modelList['2023'].push(child.name);
-                    console.log("2023 " + modelList[2023].length)
+                    // console.log("2023 " + modelList[2023].length)
                 }
                 
 
@@ -172,13 +217,13 @@ function setupUI() {
     sliderContainer.style.textAlign = 'center';
     document.body.appendChild(sliderContainer);
 
-    const yearLabel = document.createElement('div');
-    yearLabel.innerText = 'Year: 2025';
+    yearLabel = document.createElement('div');
+    yearLabel.innerText = 'Year: 2025 | Camera: Third Person`';
     yearLabel.style.fontSize = '20px';
     yearLabel.style.marginBottom = '10px';
     sliderContainer.appendChild(yearLabel);
 
-    const slider = document.createElement('input');
+    slider = document.createElement('input');
     slider.type = 'range';
     slider.min = 2023;
     slider.max = 2025;
@@ -190,6 +235,7 @@ function setupUI() {
     slider.addEventListener('input', () => {
         yearLabel.innerText = `Year: ${slider.value}`;
         updateModels(slider.value);
+        updateYearLabel(); // Update the year label to reflect camera change
     });
 }
 
@@ -262,6 +308,7 @@ function onKeyDown(event) {
             break;
         case ' ':
             toggleCamera(); // Toggle camera view on spacebar press
+            updateYearLabel(); 
             break;
     }
     // If the user is moving, update animation
@@ -288,7 +335,14 @@ function onKeyUp(event) {
 }
 
 function toggleCamera() {
-    currentCamera = currentCamera === 'thirdPerson' ? 'birdEye' : 'thirdPerson';
+    if (currentCamera === 'thirdPerson') {
+        currentCamera = 'birdEye';
+    } else if (currentCamera === 'birdEye') {
+        currentCamera = 'orbit';
+    } else {
+        currentCamera = 'thirdPerson';
+    }
+    updateYearLabel(); // Ensure UI updates with camera name
 }
 
 function animate() {
@@ -302,6 +356,7 @@ function animate() {
 
         // Adjust camera position and make it follow the user
         if (currentCamera === 'thirdPerson') {
+            // Update third-person camera position
             thirdPersonCamera.position.set(
                 user.position.x - Math.sin(user.rotation.y) * 5,
                 user.position.y + 2,
@@ -309,10 +364,17 @@ function animate() {
             );
             thirdPersonCamera.lookAt(user.position);
             camera = thirdPersonCamera;
-        } else {
-            droneCamera.position.set(user.position.x, 50, user.position.z);
+        } else if (currentCamera === 'birdEye') {
+            // Bird-eye camera follows the user
+            droneCamera.position.x = user.position.x;
+            droneCamera.position.z = user.position.z;
+            droneCamera.position.y = 50; // Keep bird-eye camera above the scene
             droneCamera.lookAt(user.position);
             camera = droneCamera;
+        } else if (currentCamera === 'orbit') {
+            // Orbit camera remains independent
+            camera = orbitCamera;
+            scene.userData.orbitControls.update(); // Update OrbitControls
         }
 
         if (mixer) mixer.update(0.01);
@@ -337,9 +399,20 @@ function animate() {
     labelRenderer.render(scene, camera);
 }
 
+// window.addEventListener('resize', () => {
+//     camera.aspect = window.innerWidth / window.innerHeight;
+//     camera.updateProjectionMatrix();
+//     renderer.setSize(window.innerWidth, window.innerHeight);
+// });
+
+// init();
+
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    // Update all cameras' aspect ratios
+    [thirdPersonCamera, droneCamera, orbitCamera].forEach(cam => {
+        cam.aspect = window.innerWidth / window.innerHeight;
+        cam.updateProjectionMatrix();
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
