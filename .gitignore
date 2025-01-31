@@ -21,6 +21,5 @@ dist-ssr
 *.zip
 *.ntvs*
 *.njsproj
-*.glb
 *.sln
 *.sw?

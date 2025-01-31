@@ -102,7 +102,7 @@ function init() {
     amblight.position.set(1, 1, 1);
     scene.add(amblight);
     
-    loadMainModel('../models/Bournemouth-Uni.glb');
+    // loadMainModel('../models/bourne-final.glb');
     addUser();
     animate();
     window.addEventListener('keydown', onKeyDown);
