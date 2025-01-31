@@ -81,6 +81,22 @@ function loadMainModel(path) {
     });
 }
 
+function updateModels(year) {
+    activeModels.forEach(name => {
+        if (models[name]) models[name].visible = false;
+    });
+    activeModels.clear();
+    
+    modelList[year].forEach(name => {
+        if (models[name]) {
+            models[name].visible = true;
+            labels[name].visible = true;
+            activeModels.add(name);
+        }
+    });
+    // updateLabels();
+}
+
 function setupUI() {
     const sliderContainer = document.createElement('div');
     sliderContainer.style.position = 'absolute';
@@ -111,16 +127,40 @@ function setupUI() {
     });
 }
 
-function updateModels(year) {
-    activeModels.forEach(name => {
-        if (models[name]) models[name].visible = false;
-    });
-    activeModels.clear();
-    
-    modelList[year].forEach(name => {
-        if (models[name]) {
-            models[name].visible = true;
-            activeModels.add(name);
+function randomHexColor() {
+    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  }
+
+  
+function loadModel(name, path) {
+    const loader = new GLTFLoader();
+    loader.load(path, function(gltf) {
+        models[name] = gltf.scene;
+        scene.add(models[name]); // Load all models at initialization
+        activeModels.add(name);
+
+        // Traverse the scene to find and manipulate individual objects
+        gltf.scene.traverse(function (child) {
+            if (child.isMesh) {
+            console.log('Mesh found:', child.name, child);
+            // child.material = new THREE.MeshBasicMaterial({ color: randomHexColor() });
+            // child.position.set(Math.random(1000), Math.random(1000), Math.random(1000));
+            // You can manipulate the child here, e.g., position, rotation, scale
+            // child.position.set(1000, 2000, 3000); // Set to desired coordinates
+            // chil
+        }}
+        );
+
+        // Example: Accessing a specific object by name
+        const specificObject = gltf.scene.getObjectByName('Allsebrook_Lecture_Theatre_2'); // Replace with your object's name
+        if (specificObject) {
+            // Locate the object by setting its position
+            // specificObject.position.set(1, 2, 3); // Set to desired coordinates
+            console.log('Located Object:', specificObject.name, specificObject.position);
+            // scene.remove(specificObject.name);
+            
+        } else {
+            console.warn('Object with the specified name not found.');
         }
     });
 }

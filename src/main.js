@@ -12,6 +12,38 @@ let modelList = {
     '2024': [],
     '2023': [],
 };
+let building_list = {
+    '2024': [
+      'element007',
+      'Block_2_17-24_2',
+      'Talbot_House_1',
+      'element015_1',
+      'element299',
+    ],
+    '2023': [
+      'Allsebrook_Lecture_Theatre_1',
+      'Christchurch_House_2',
+      'element316',
+      'North_Light_Studios001_2',
+      'element015_2',
+      'Block_1_1-16_1',
+      'element012_2',
+      'element347',
+      'North_Light_Studios002_1',
+      'Weymouth_House_1',
+      'Kimmeridge_House_2',
+      'element299',
+      'Sport_BU_2',
+      'element154_1',
+      'North_Light_Studios_1',
+      'Library_(Arts_University_Bournemouth)_2',
+      'element153_2',
+      'element353',
+      'element015_2',
+      'DESIGN_&_ENGINEERING_INNOVATION_CENTRE_2'
+    ]
+  
+};
 
 let userDirection = new THREE.Vector3();
 let moveSpeed = 0.5;
@@ -70,18 +102,25 @@ function loadMainModel(path) {
             if (child.isMesh) {
                 // Only push to model list if the object is a mesh
                 modelList['2025'].push(child.name);
-                
-                if (Math.random(0, 1) < 0.5) {
+                // console.log("2025 " + modelList[2025].length)
+
+
+                if (!building_list['2024'].includes(child.name)) {
                     modelList['2024'].push(child.name);
-
-                    if (Math.random(0, 1) < 0.5) {
-                        modelList['2023'].push(child.name);
-                    }
-
+                    // console.log("2024 " + modelList[2024].length)
                 }
+
+                if (!building_list['2023'].includes(child.name)) {
+                    modelList['2023'].push(child.name);
+                    console.log("2023 " + modelList[2023].length)
+                }
+                
+
 
                 // Change position of objects
                 child.position.set(Math.random(1, 10), Math.random(1, 10), Math.random(1, 10));
+
+                // console.log(child.name, child, (building_list['2024'].includes('Allsebrook_Lecture_Theatre')))
 
                 // Create label for each object
                 createLabel(child);

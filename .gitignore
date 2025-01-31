@@ -19,7 +19,6 @@ dist-ssr
 .DS_Store
 *.suo
 *.zip
-*.glb
 *.ntvs*
 *.njsproj
 *.glb
