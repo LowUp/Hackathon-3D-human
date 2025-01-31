@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, mixer;
+let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, mixer, idle, walk, action_idle, action_walk;
 let aspectRatio = window.innerWidth / window.innerHeight;
 let models = {};
 let activeModels = new Set();
@@ -11,11 +11,8 @@ let modelList = {
     '2023': [],
 };
 let userDirection = new THREE.Vector3();
-let moveSpeed = 0.5;
+let moveSpeed = 0.5; // Walking speed
 let currentCamera = 'thirdPerson';
-let animationActions = [];
-let activeAction;
-let lastAction;
 
 function init() {
     scene = new THREE.Scene();
@@ -114,32 +111,18 @@ function addUser() {
     const loader = new GLTFLoader();
     loader.load('../models/avatar.glb', function (gltf) {
         user = gltf.scene;
-        user.scale.set(0.5, 0.5, 0.5);
+        user.scale.set(1, 1, 1);  // Set the scale to (1,1,1)
         user.position.set(1, 0, 3);
         scene.add(user);
-
+        idle = gltf.animations[1];
+        walk = gltf.animations[6]
         mixer = new THREE.AnimationMixer(user);
-
+        action_walk = mixer.clipAction(walk);
+        action_idle = mixer.clipAction(idle);
         // Load the default animation
         if (gltf.animations.length > 0) {
-            const action = mixer.clipAction(gltf.animations[0]);
-            animationActions.push(action);
-            activeAction = action;
-            action.play();
+            action_idle.play();
         }
-
-        // Load additional animations
-        const additionalAnimations = ['walk', 'run', 'jump']; // Replace with your animation names
-        additionalAnimations.forEach(anim => {
-            loader.load(`../models/avatar@${anim}.glb`, function (animGltf) {
-                if (animGltf.animations.length > 0) {
-                    const action = mixer.clipAction(animGltf.animations[0]);
-                    animationActions.push(action);
-                }
-            }, undefined, function (error) {
-                console.error(`Error loading ${anim} animation:`, error);
-            });
-        });
 
         thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
         thirdPersonCamera.lookAt(user.position);
@@ -154,50 +137,47 @@ function onKeyDown(event) {
         case 'ArrowDown':
             userDirection.set(0, 0, -moveSpeed);
             break;
-        case 'ArrowUp':
+        case 'ArrowUp': 
             userDirection.set(0, 0, moveSpeed);
             break;
-        case 'ArrowLeft':
+        case 'ArrowRight':
             userDirection.set(-moveSpeed, 0, 0);
             break;
-        case 'ArrowRight':
+        case 'ArrowLeft':
             userDirection.set(moveSpeed, 0, 0);
             break;
-        case ' ':
-            toggleCamera();
-            break;
-        case '1':
-            switchAnimation(0); // Default animation
-            break;
-        case '2':
-            switchAnimation(1); // Walk animation
-            break;
-        case '3':
-            switchAnimation(2); // Run animation
-            break;
-        case '4':
-            switchAnimation(3); // Jump animation
-            break;
     }
+
+    // If the user is moving, update animation
+    if (userDirection.length() > 0) {
+        action_idle.stop(); 
+        action_walk.play();  // Walk animation
+    }
+
+    //updateAnimation();
 }
 
 function onKeyUp(event) {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
-        userDirection.set(0, 0, 0);
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {     
+        userDirection.set(0, 0, 0);  // Stop moving when no arrow key is pressed
     }
-}
 
-function toggleCamera() {
-    currentCamera = currentCamera === 'thirdPerson' ? 'birdEye' : 'thirdPerson';
+    // If no movement, switch to idle animation
+    if (userDirection.length() === 0) {
+        action_walk.stop();
+        action_idle.play();
+    }
 }
 
 function animate() {
     requestAnimationFrame(animate);
 
     if (user) {
+        // Move user based on userDirection (keyboard input)
         user.translateX(userDirection.x);
         user.translateZ(userDirection.z);
 
+        // Adjust camera position and make it follow the user
         if (currentCamera === 'thirdPerson') {
             thirdPersonCamera.position.set(
                 user.position.x - Math.sin(user.rotation.y) * 5,
