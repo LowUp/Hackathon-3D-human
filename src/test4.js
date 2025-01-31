@@ -12,12 +12,7 @@ let modelList = {
 };
 let userDirection = new THREE.Vector3();
 let moveSpeed = 0.5; // Walking speed
-let runSpeed = 1.5;  // Running speed
-let isRunning = false; // Track if running
 let currentCamera = 'thirdPerson';
-let animationActions = [];
-let activeAction;
-let lastAction;
 
 function init() {
     scene = new THREE.Scene();
@@ -165,10 +160,6 @@ function onKeyDown(event) {
 function onKeyUp(event) {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {     
         userDirection.set(0, 0, 0);  // Stop moving when no arrow key is pressed
-    }
-
-    if (event.key === 'Shift') {
-        isRunning = false;  // Stop running when Shift is released
     }
 
     // If no movement, switch to idle animation
