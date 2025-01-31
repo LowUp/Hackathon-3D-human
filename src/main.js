@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
-let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio;
+let scene, camera, droneCamera, thirdPersonCamera, renderer, terrain, user, insetWidth, insetHeight, aspectRatio, labelRenderer;
 aspectRatio = window.innerWidth / window.innerHeight;
 
 let models = {}; // Store individual child objects from the main model
@@ -14,6 +15,7 @@ let modelList = {
 
 let userDirection = new THREE.Vector3();
 let moveSpeed = 0.5;
+let labels = {}; // Store CSS2DObjects for labels
 
 let currentCamera = 'thirdPerson'; // Track current camera ('thirdPerson' or 'birdEye')
 
@@ -26,7 +28,7 @@ function init() {
     camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
 
     // Create third-person camera
-    thirdPersonCamera = new THREE.PerspectiveCamera(155, aspectRatio, 0.1, 1000);
+    thirdPersonCamera = new THREE.PerspectiveCamera(105, aspectRatio, 0.1, 1000);
     
     // Create bird-eye camera (fixed above the scene)
     droneCamera = new THREE.PerspectiveCamera(90, aspectRatio, 0.01, 1000);
@@ -36,7 +38,14 @@ function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-    
+
+    // Create Label Renderer for 2D text
+    labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0px';
+    document.body.appendChild(labelRenderer.domElement);
+
     const amblight = new THREE.AmbientLight(0xffffff, 1);
     scene.add(amblight);
     
@@ -45,6 +54,7 @@ function init() {
     animate();
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('resize', onWindowResize);
     
     setupUI();
 }
@@ -58,28 +68,60 @@ function loadMainModel(path) {
         // Store child objects by name in the models dictionary
         terrain.traverse(function(child) {
             if (child.isMesh) {
-                console.log(child.name, child)
+                // Only push to model list if the object is a mesh
                 modelList['2025'].push(child.name);
                 
                 if (Math.random(0, 1) < 0.5) {
-                    modelList['2024'].push(child.name)
-                } 
-
-                if (Math.random(0, 1) < 0.3) {
-                    modelList['2023'].push(child.name)
+                    modelList['2024'].push(child.name);
                 }
 
-                // modelList['2024'].push(child.name);
+                if (Math.random(0, 1) < 0.3) {
+                    modelList['2023'].push(child.name);
+                }
+
+                // Change position of objects
+                child.position.set(child.position.x + Math.random() * 2 -1, child.position.y, child.position.z + Math.random() * 2 - 1);
+
+                // Create label for each object
+                createLabel(child);
+
                 models[child.name] = child;
-                // child.visible = false; // Initially hide all objects
             }
         });
         
-        updateModels(2025); // Load initial objects
+        // Load initial models
+        updateModels(2025);
     }, undefined, function(error) {
         console.error('Error loading model:', error);
     });
 }
+
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Create and attach a label for each model
+function createLabel(object) {
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'label';
+    labelDiv.innerText = object.name;
+    labelDiv.style.color = 'white';
+    labelDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    labelDiv.style.padding = '5px';
+    labelDiv.style.borderRadius = '5px';
+    labelDiv.style.fontSize = '12px';
+
+    const label = new CSS2DObject(labelDiv);
+    label.position.copy(object.position); // Match label position with object position
+    
+    labels[object.name] = label;
+    scene.add(label);
+}
+
 
 function setupUI() {
     const sliderContainer = document.createElement('div');
@@ -120,7 +162,19 @@ function updateModels(year) {
     modelList[year].forEach(name => {
         if (models[name]) {
             models[name].visible = true;
+            labels[name].visible = true;
             activeModels.add(name);
+        }
+    });
+    updateLabels();
+}
+
+function updateLabels() {
+    Object.values(labels).forEach(label => {
+        const object = models[label.element.innerText];
+        if (object) {
+            label.position.copy(object.position); // Update label position to match object
+            label.visible = object.visible; // Sync visibility with object
         }
     });
 }
@@ -150,12 +204,12 @@ function onKeyDown(event) {
             userDirection.set(0, 0, moveSpeed);
             break;
         case 'ArrowLeft':
-            // user.rotation.y += 0.1;
-            userDirection.set(-moveSpeed, 0, 0); // Left (move along the X-axis)
+            user.rotation.y += 0.1;
+            // userDirection.set(-moveSpeed, 0, 0); // Left (move along the X-axis)
             break;
         case 'ArrowRight':
-            // user.rotation.y -= 0.1;
-            userDirection.set(moveSpeed, 0, 0); 
+            user.rotation.y -= 0.1;
+            // userDirection.set(moveSpeed, 0, 0); 
             break;
         case ' ':
             toggleCamera(); // Toggle camera view on spacebar press
@@ -179,12 +233,9 @@ function toggleCamera() {
 function animate() {
     requestAnimationFrame(animate);
     user.translateZ(userDirection.z);
+    user.position.x += userDirection.x;
 
-    user.position.x += userDirection.x; // Move the user left/right
-
-    // Update camera position
     if (currentCamera === 'thirdPerson') {
-        // Update third-person camera position
         thirdPersonCamera.position.set(
             user.position.x - Math.sin(user.rotation.y) * 5,
             user.position.y + 2,
@@ -193,22 +244,14 @@ function animate() {
         thirdPersonCamera.lookAt(user.position);
         camera = thirdPersonCamera;
     } else {
-        // Bird-eye camera moves based on the user's position
-        droneCamera.position.x = user.position.x;
-        droneCamera.position.z = user.position.z;
-        droneCamera.position.y = 50; // Keep bird-eye camera above the scene
+        droneCamera.position.set(user.position.x, 50, user.position.z);
         droneCamera.lookAt(user.position);
         camera = droneCamera;
     }
     
-    // camera.position.set(
-    //     user.position.x - Math.sin(user.rotation.y) * 2,
-    //     user.position.y + 1,
-    //     user.position.z - Math.cos(user.rotation.y) * 2
-    // );
-    // camera.lookAt(user.position);
-    
+    updateLabels();
     renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
 }
 
 window.addEventListener('resize', () => {
