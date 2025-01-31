@@ -45,7 +45,7 @@ let modelList = {
 let userDirection = new THREE.Vector3();
 let moveSpeed = 1;
 
-let currentCamera = 'thirdPerson'; // Can be 'thirdPerson', 'birdEye', or 'orbit'
+let currentCamera = 'orbit'; // Can be 'thirdPerson', 'birdEye', or 'orbit'
 
 // Declare yearLabel and slider globally
 let yearLabel, slider;
@@ -90,7 +90,7 @@ function init() {
     amblight.position.set(1, 1, 1);
     scene.add(amblight);
     
-    // loadModel('terrain', '../models/bourne-final.glb');
+    loadModel('terrain', '../models/bourne-final.glb');
     addUser();
     animate();
     
@@ -208,18 +208,24 @@ function loadModel(name, path) {
 }
 
 function addUser() {
-    const userGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
-    const userMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    user = new THREE.Mesh(userGeometry, userMaterial);
-    user.position.set(1, 2, 3);
-    scene.add(user);
-    
-    // Set the initial camera positions
-    thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
-    thirdPersonCamera.lookAt(user.position);
-    
-    camera = thirdPersonCamera; // Set the default camera to third-person
+    const loader = new GLTFLoader();
+    loader.load('../models/avatar.glb', function (gltf) { // Update path accordingly
+        user = gltf.scene;
+        user.scale.set(1, 1, 1); // Adjust scale if needed
+        user.position.set(420.56676355174557, 0, 1.084322644712394);
+
+        scene.add(user);
+
+        // Set the initial camera positions
+        thirdPersonCamera.position.set(user.position.x - 5, user.position.y + 2, user.position.z);
+        thirdPersonCamera.lookAt(user.position);
+
+        camera = thirdPersonCamera; // Set the default camera to third-person
+    }, undefined, function (error) {
+        console.error("Error loading avatar model:", error);
+    });
 }
+
 
 function removeModel(name) {
     if (models[name] && scene.children.includes(models[name])) {
@@ -282,36 +288,33 @@ function toggleCamera() {
 
 function animate() {
     requestAnimationFrame(animate);
-    
-    // Update user movement
-    user.translateZ(userDirection.z);
-    user.position.x += userDirection.x; // Move the user left/right
 
-    // Update camera positions based on the current camera
-    if (currentCamera === 'thirdPerson') {
-        // Update third-person camera position
-        thirdPersonCamera.position.set(
-            user.position.x - Math.sin(user.rotation.y) * 5,
-            user.position.y + 2,
-            user.position.z - Math.cos(user.rotation.y) * 5
-        );
-        thirdPersonCamera.lookAt(user.position);
-        camera = thirdPersonCamera;
-    } else if (currentCamera === 'birdEye') {
-        // Bird-eye camera follows the user
-        droneCamera.position.x = user.position.x;
-        droneCamera.position.z = user.position.z;
-        droneCamera.position.y = 50; // Keep bird-eye camera above the scene
-        droneCamera.lookAt(user.position);
-        camera = droneCamera;
-    } else if (currentCamera === 'orbit') {
-        // Orbit camera remains independent
-        camera = orbitCamera;
-        scene.userData.orbitControls.update(); // Update OrbitControls
+    if (user) {
+        user.translateZ(userDirection.z);
+        user.position.x += userDirection.x; // Move left/right
+
+        // Update third-person camera
+        if (currentCamera === 'thirdPerson') {
+            thirdPersonCamera.position.set(
+                user.position.x - Math.sin(user.rotation.y) * 5,
+                user.position.y + 2,
+                user.position.z - Math.cos(user.rotation.y) * 5
+            );
+            thirdPersonCamera.lookAt(user.position);
+            camera = thirdPersonCamera;
+        } else if (currentCamera === 'birdEye') {
+            droneCamera.position.set(user.position.x, 50, user.position.z);
+            droneCamera.lookAt(user.position);
+            camera = droneCamera;
+        } else if (currentCamera === 'orbit') {
+            camera = orbitCamera;
+            scene.userData.orbitControls.update();
+        }
     }
 
     renderer.render(scene, camera);
 }
+
 
 window.addEventListener('resize', () => {
     // Update all cameras' aspect ratios

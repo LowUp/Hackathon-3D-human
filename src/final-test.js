@@ -52,7 +52,8 @@ let moveSpeed = 0.5;
 let labels = {}; // Store CSS2DObjects for labels
 
 let currentCamera = 'thirdPerson'; // Track current camera ('thirdPerson' or 'birdEye')
-
+// Make orbitControls a global variable (or accessible where needed)
+// var orbitControls; // Declare orbitControls outside of init()
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xaaaaaa);
@@ -80,7 +81,7 @@ function init() {
     document.body.appendChild(renderer.domElement);
 
      // Initialize OrbitControls for the orbitCamera
-     let orbitControls = new OrbitControls(orbitCamera, renderer.domElement);
+     var orbitControls = new OrbitControls(orbitCamera, renderer.domElement);
      orbitControls.enableDamping = true; // Enable smooth damping
      orbitControls.dampingFactor = 0.05;
      orbitControls.screenSpacePanning = false;
@@ -315,6 +316,7 @@ function addUser() {
 }
 
 function onKeyDown(event) {
+    console.log(user)
     switch(event.key) {
         case 'ArrowDown':
             userDirection.set(0, 0, -moveSpeed);
@@ -330,6 +332,7 @@ function onKeyDown(event) {
             break;
         case ' ':
             toggleCamera(); // Toggle camera view on spacebar press
+            updateYearLabel();
             break;
     }
     // If the user is moving, update animation
@@ -358,17 +361,18 @@ function onKeyUp(event) {
 function toggleCamera() {
     if (currentCamera === 'thirdPerson') {
         currentCamera = 'birdEye';
-        scene.userData.orbitControls.enabled = false;
+        camera = droneCamera;
     } else if (currentCamera === 'birdEye') {
         currentCamera = 'orbit';
-        scene.userData.orbitControls.enabled = true; // Enable orbit controls
+        camera = orbitCamera;
+        scene.userData.orbitControls.enabled = true; // Enable OrbitControls
     } else {
         currentCamera = 'thirdPerson';
-        scene.userData.orbitControls.enabled = false;
+        camera = thirdPersonCamera;
+        scene.userData.orbitControls.enabled = false; // Disable OrbitControls when switching back
     }
     updateYearLabel(); // Ensure UI updates with camera name
 }
-
 
 
 
@@ -380,8 +384,8 @@ function updateYearLabel() {
 
 function animate() {
     requestAnimationFrame(animate);
-
-    if (user && currentCamera !== 'orbit') {
+    
+    if (user) {
         // Move user based on userDirection (keyboard input)
         user.translateX(userDirection.x);
         user.translateZ(userDirection.z);
@@ -394,22 +398,14 @@ function animate() {
                 user.position.z - Math.cos(user.rotation.y) * 5
             );
             thirdPersonCamera.lookAt(user.position);
-            camera = thirdPersonCamera;
         } else if (currentCamera === 'birdEye') {
             droneCamera.position.set(user.position.x, 50, user.position.z);
             droneCamera.lookAt(user.position);
-            camera = droneCamera;
         }
-    }
 
-    // Only update orbit controls if in orbit mode
-    if (currentCamera === 'orbit') {
-        camera = orbitCamera;
-        scene.userData.orbitControls.update(); 
+        // Update animations
+        if (mixer) mixer.update(0.01);
     }
-
-    // Update animations
-    if (mixer) mixer.update(0.01);
 
     // Update labels' visibility based on active models
     updateLabels();
@@ -417,8 +413,18 @@ function animate() {
     // Render the scene with the active camera
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
-}
 
+    // Update OrbitControls ONLY if it is enabled
+    // if (orbitControls.enabled) { // Check if enabled before updating
+    //     orbitControls.update();
+    // }
+
+    // Update OrbitControls only if orbitCamera is active
+    if (currentCamera === 'orbit') {
+        scene.userData.orbitControls.update();
+        orbitControls.update();
+    }
+}
 
 
 
